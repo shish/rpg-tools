@@ -1,0 +1,51 @@
+#!/usr/bin/python3
+
+import re
+import random
+import readline
+
+p1 = re.compile("d(\d+)")
+p2 = re.compile("(\d+)d(\d+)")
+p3 = re.compile("(\d+)d(\d+)\+(\d)")
+
+while True:
+    line = input("die> ")
+    results = []
+    for part in line.split(" "):
+        part = part.strip()
+
+        m1 = p1.match(part)
+        m2 = p2.match(part)
+        m3 = p3.match(part)
+
+        if m1:
+            n = 1
+            d = int(m1.group(1))
+            p = 0
+        if m2:
+            n = int(m2.group(1))
+            d = int(m2.group(2))
+            p = 0
+        if m3:
+            n = int(m3.group(1))
+            d = int(m3.group(2))
+            p = int(m3.group(3))
+
+        dice = []
+        for dn in range(0, n):
+            explosions = []
+            while True:
+                v = random.randint(1, d)
+                explosions.append(v)
+                if v != d:
+                    break
+            dice.append(explosions)
+        flat_dice = []
+        for n in dice:
+            flat_dice.extend(n)
+        results.append(sum(flat_dice)+p)
+        if p:
+            print(dice, sum(flat_dice), "+", p, "=", sum(flat_dice)+p)
+        else:
+            print(dice, "=", sum(flat_dice))
+    print("---> max(%d) sum(%d)" % (max(results), sum(results)))
