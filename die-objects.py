@@ -33,5 +33,6 @@ for n, _name in enumerate(numbers):
     globals()[_name] = repeat_roll(n+1)
 
 
-print three.d.six
-print two.d.eight
+if __name__ == "__main__":
+    print three.d.six
+    print two.d.eight
