@@ -4,48 +4,80 @@ import re
 import random
 import readline
 
-p1 = re.compile("d(\d+)")
-p2 = re.compile("(\d+)d(\d+)")
-p3 = re.compile("(\d+)d(\d+)\+(\d)")
 
-while True:
-    line = input("die> ")
+class DieException(Exception):
+    pass
+
+
+class RollSpec(object):
+    def __init__(self):
+        self.n = 1
+        self.d = 6
+        self.p = 0
+        self.explode = False
+        self.test = False
+
+
+p = re.compile("(\d+)?d(\d+)?(?:\+(\d+))?(!)?(?:([<>])(\d+))?")
+
+def get_rollspec(part):
+    m = p.match(part)
+    rs = RollSpec()
+
+    if m:
+        rs.n = int(m.group(1) or 1)
+        rs.d = int(m.group(2) or 6)
+        rs.p = int(m.group(3) or 0)
+        rs.explodex = m.group(4) == "!"
+        if m.group(5) and m.group(6):
+            if m.group(5) == ">":
+                rs.test = lambda x: x > int(m.group(6))
+            if m.group(5) == "<":
+                rs.test = lambda x: x < int(m.group(6))
+    else:
+        raise DieException("Couldn't recognise a die format")
+
+    return rs
+
+
+def roll_dice(rs):
+    dice = []
+    for dn in range(0, rs.n):
+        explosions = []
+        while True:
+            v = random.randint(1, rs.d)
+            explosions.append(v)
+            if not rs.explode or v != rs.d:
+                break
+        if rs.test:
+            dice.append([rs.test(v) for v in explosions])
+        else:
+            dice.append(explosions)
+    return dice
+
+
+def roll_set(line):
     results = []
     for part in line.split(" "):
-        part = part.strip()
-
-        m1 = p1.match(part)
-        m2 = p2.match(part)
-        m3 = p3.match(part)
-
-        if m1:
-            n = 1
-            d = int(m1.group(1))
-            p = 0
-        if m2:
-            n = int(m2.group(1))
-            d = int(m2.group(2))
-            p = 0
-        if m3:
-            n = int(m3.group(1))
-            d = int(m3.group(2))
-            p = int(m3.group(3))
-
-        dice = []
-        for dn in range(0, n):
-            explosions = []
-            while True:
-                v = random.randint(1, d)
-                explosions.append(v)
-                if v != d:
-                    break
-            dice.append(explosions)
+        rollspec = get_rollspec(part.strip())
+        dice = roll_dice(rollspec)
         flat_dice = []
         for n in dice:
             flat_dice.extend(n)
-        results.append(sum(flat_dice)+p)
-        if p:
-            print(dice, sum(flat_dice), "+", p, "=", sum(flat_dice)+p)
+        if rollspec.p:
+            print(dice, "=", sum(flat_dice), "+", rollspec.p, "=", sum(flat_dice)+rollspec.p)
         else:
             print(dice, "=", sum(flat_dice))
-    print("---> max(%d) sum(%d)" % (max(results), sum(results)))
+        results.append(sum(flat_dice)+rollspec.p)
+    return results
+
+
+while True:
+    try:
+        line = input("die> ")
+        results = roll_set(line)
+        print("---> max(%d) sum(%d)" % (max(results), sum(results)))
+    except DieException as e:
+        print(str(e))
+    except (EOFError, KeyboardInterrupt):
+        break
