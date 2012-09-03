@@ -10,57 +10,48 @@ class DieException(Exception):
 
 
 class RollSpec(object):
-    def __init__(self):
-        self.n = 1
-        self.d = 6
-        self.p = 0
-        self.explode = False
-        self.test = False
+    pattern = re.compile("(\d+)?d(\d+)?(?:\+(\d+))?(!)?(?:([<>])(\d+))?")
 
+    def __init__(self, part):
+        m = self.pattern.match(part)
 
-p = re.compile("(\d+)?d(\d+)?(?:\+(\d+))?(!)?(?:([<>])(\d+))?")
+        if m:
+            self.n = int(m.group(1) or 1)
+            self.d = int(m.group(2) or 6)
+            self.p = int(m.group(3) or 0)
+            self.explode = m.group(4) == "!"
 
-def get_rollspec(part):
-    m = p.match(part)
-    rs = RollSpec()
-
-    if m:
-        rs.n = int(m.group(1) or 1)
-        rs.d = int(m.group(2) or 6)
-        rs.p = int(m.group(3) or 0)
-        rs.explodex = m.group(4) == "!"
-        if m.group(5) and m.group(6):
-            if m.group(5) == ">":
-                rs.test = lambda x: x > int(m.group(6))
-            if m.group(5) == "<":
-                rs.test = lambda x: x < int(m.group(6))
-    else:
-        raise DieException("Couldn't recognise a die format")
-
-    return rs
-
-
-def roll_dice(rs):
-    dice = []
-    for dn in range(0, rs.n):
-        explosions = []
-        while True:
-            v = random.randint(1, rs.d)
-            explosions.append(v)
-            if not rs.explode or v != rs.d:
-                break
-        if rs.test:
-            dice.append([rs.test(v) for v in explosions])
+            self.test = None
+            if m.group(5) and m.group(6):
+                if m.group(5) == ">":
+                    self.test = lambda x: x > int(m.group(6))
+                if m.group(5) == "<":
+                    self.test = lambda x: x < int(m.group(6))
         else:
-            dice.append(explosions)
-    return dice
+            raise DieException("Couldn't recognise a die format")
+
+    def roll(self):
+        dice = []
+        for dn in range(0, self.n):
+            explosions = []
+            while True:
+                v = random.randint(1, self.d)
+                explosions.append(v)
+                if not self.explode or v != self.d:
+                    break
+            if self.test:
+                dice.append([self.test(v) for v in explosions])
+            else:
+                dice.append(explosions)
+        return dice
 
 
 def roll_set(line):
+    rolls = [RollSpec(part.strip()) for part in line.split()]
     results = []
-    for part in line.split(" "):
-        rollspec = get_rollspec(part.strip())
-        dice = roll_dice(rollspec)
+    for rollspec in rolls:
+        dice = rollspec.roll()
+
         flat_dice = []
         for n in dice:
             flat_dice.extend(n)
